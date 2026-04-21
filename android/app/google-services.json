@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "821897500097",
+    "firebase_url": "https://fitstep-f5dfe-default-rtdb.asia-southeast1.firebasedatabase.app",
+    "project_id": "fitstep-f5dfe",
+    "storage_bucket": "fitstep-f5dfe.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:821897500097:android:81174e4241b1e35db80b40",
+        "android_client_info": {
+          "package_name": "com.example.fitstep"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "821897500097-ouvju5skiob7kiu0hr9j9avqlu99f5br.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.fitstep",
+            "certificate_hash": "4df871913e9b6b8b889fb8ea76fccb61af2481e4"
+          }
+        },
+        {
+          "client_id": "821897500097-u6f01rt2ko286gd2bfmc8mrupr3qo6nd.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAJGed4TUQ7uMTtYuIRtsYkSgayfvQZhmk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "821897500097-u6f01rt2ko286gd2bfmc8mrupr3qo6nd.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
