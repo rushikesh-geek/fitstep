@@ -3,6 +3,11 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:fl_chart/fl_chart.dart';
 import '../../viewmodels/home_viewmodel.dart';
+import '../../viewmodels/gamification_viewmodel.dart';
+import '../../widgets/motivation_card.dart';
+import '../../widgets/dynamic_goal_card.dart';
+import '../../widgets/weekly_analytics_card.dart';
+import '../../widgets/gamification_card.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -13,17 +18,32 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   final _sleepController = TextEditingController();
+  bool _dataLoaded = false;
 
   @override
   void initState() {
     super.initState();
-    _loadData();
+    // Defer data loading to after the first frame is rendered
+    // This prevents setState() called during build phase
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _loadDataAsync();
+    });
   }
 
-  void _loadData() {
+  /// Load data asynchronously after first frame
+  Future<void> _loadDataAsync() async {
+    if (!mounted) return;
+    
     final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null) {
-      context.read<HomeViewModel>().loadTodayData(uid);
+    if (uid != null && !_dataLoaded) {
+      _dataLoaded = true;
+      // Load data without blocking build
+      await context.read<HomeViewModel>().loadTodayData(uid);
+      
+      // Load gamification data
+      if (mounted) {
+        await context.read<GamificationViewModel>().loadGamificationData(uid);
+      }
     }
   }
 
@@ -42,20 +62,39 @@ class _HomeScreenState extends State<HomeScreen> {
         title: const Text('Home'),
         backgroundColor: Colors.blue,
       ),
-      body: Consumer<HomeViewModel>(
-        builder: (context, viewModel, _) {
+      body: Consumer2<HomeViewModel, GamificationViewModel>(
+        builder: (context, viewModel, gamificationVM, _) {
           if (viewModel.isLoading) {
             return const Center(child: CircularProgressIndicator());
           }
 
           return RefreshIndicator(
             onRefresh: () async {
-              _loadData();
+              // Reset flag to allow data reloading on pull-to-refresh
+              _dataLoaded = false;
+              await _loadDataAsync();
             },
             child: ListView(
               padding: const EdgeInsets.all(16.0),
               children: [
-                // Steps Card
+                // 1. MOTIVATION CARD - New dynamic feature
+                MotivationCard(
+                  message: viewModel.motivationalMessage,
+                  currentSteps: viewModel.steps,
+                  dailyGoal: viewModel.dynamicGoal,
+                  dailyStreak: gamificationVM.dailyStreak,
+                ),
+                const SizedBox(height: 16),
+
+                // 2. DYNAMIC GOAL CARD - New smart goal feature
+                DynamicGoalCard(
+                  currentSteps: viewModel.steps,
+                  dailyGoal: viewModel.dynamicGoal,
+                  isGoalAchieved: viewModel.steps >= viewModel.dynamicGoal,
+                ),
+                const SizedBox(height: 20),
+
+                // 3. STEPS CARD - Original feature
                 Card(
                   elevation: 2,
                   child: Padding(
@@ -407,6 +446,18 @@ class _HomeScreenState extends State<HomeScreen> {
                     ),
                   ),
                 ),
+                const SizedBox(height: 20),
+
+                // 5. WEEKLY ANALYTICS CARD - New insights feature
+                WeeklyAnalyticsCard(
+                  analytics: viewModel.weeklyAnalytics,
+                ),
+
+                // 6. GAMIFICATION CARD - New gamification feature
+                GamificationCard(
+                  gamificationData: gamificationVM.gamificationData,
+                ),
+
                 const SizedBox(height: 20),
 
                 // Error Message

@@ -1,0 +1,161 @@
+{
+  "healthHub": {
+    "fitness": {
+      "fitness_1": {
+        "title": "How To Build A Daily Walking Habit",
+        "description": "Walking is one of the simplest forms of exercise. Aim for 10,000 steps daily to maintain cardiovascular health.",
+        "videoUrl": "https://www.youtube.com/watch?v=-3N2sUkdf-Y",
+        "level": "Beginner",
+        "tags": ["walking", "cardio", "beginner"],
+        "priority": 10
+      },
+      "fitness_2": {
+        "title": "HIIT Workouts - Benefits and How to Do It",
+        "description": "HIIT workouts boost metabolism and improve endurance. Short bursts of intense activity followed by rest periods.",
+        "videoUrl": "https://www.youtube.com/watch?v=dNJ2gG-Jud4",
+        "level": "Intermediate",
+        "tags": ["hiit", "workout", "cardio"],
+        "priority": 8
+      }
+    },
+    "hydration": {
+      "hydration_1": {
+        "title": "Importance of Hydration",
+        "description": "Drink at least 8 glasses of water daily. Proper hydration improves performance and cognitive function.",
+        "videoUrl": "https://www.youtube.com/watch?v=-slnr4TGA4Y",
+        "level": "Beginner",
+        "tags": ["water", "hydration", "health"],
+        "priority": 7
+      },
+      "hydration_2": {
+        "title": "How to Properly Hydrate & How Much Water to Drink Each Day",
+        "description": "Hydration strategies, factors affecting hydration needs, and actionable guidelines for daily water consumption.",
+        "videoUrl": "https://www.youtube.com/watch?v=lwOPaNMTGh8",
+        "level": "Beginner",
+        "tags": ["water", "hydration", "exercise"],
+        "priority": 8
+      }
+    },
+    "sleep": {
+      "sleep_1": {
+        "title": "Sleep Hygiene Tips",
+        "description": "Maintain a consistent sleep schedule. Create a dark, cool, quiet bedroom for better sleep quality.",
+        "videoUrl": "https://www.youtube.com/watch?v=ACmUi-6xkTM",
+        "level": "Beginner",
+        "tags": ["sleep", "rest", "health"],
+        "priority": 6
+      },
+      "sleep_2": {
+        "title": "Why Sleep Matters",
+        "description": "Quality sleep improves memory, mood, and immune function. Aim for 7-9 hours nightly.",
+        "videoUrl": "https://www.youtube.com/watch?v=LmwgGkJ64CM",
+        "level": "Beginner",
+        "tags": ["sleep", "rest", "health"],
+        "priority": 5
+      }
+    },
+    "nutrition": {
+      "nutrition_1": {
+        "title": "A Balanced Diet Guide",
+        "description": "A balanced diet includes proteins, carbohydrates, fats, vitamins, and minerals. Eat a variety of colorful foods.",
+        "videoUrl": "https://www.youtube.com/watch?v=81G22t2UHxA",
+        "level": "Beginner",
+        "tags": ["nutrition", "diet", "health"],
+        "priority": 5
+      }
+    },
+    "weight": {
+      "weight_1": {
+        "title": "Healthy Weight Management",
+        "description": "Maintain a healthy weight through balanced diet and regular exercise.",
+        "videoUrl": "https://www.youtube.com/watch?v=EwlYYJXCmTE",
+        "level": "Intermediate",
+        "tags": ["weight", "fitness", "nutrition"],
+        "priority": 4
+      }
+    }
+  },
+  "users": {
+    "user_uid_here": {
+      "username": "John Doe",
+      "age": 30,
+      "height": 175,
+      "weight": 70.5,
+      "bmi": 23.0,
+      "stepGoal": 8000,
+      "daily": {
+        "2024-04-26": {
+          "steps": 8500,
+          "water": 2000,
+          "sleep": 7,
+          "calories": 2100,
+          "distance": 6.2
+        },
+        "2024-04-25": {
+          "steps": 7200,
+          "water": 1800,
+          "sleep": 6,
+          "calories": 1890,
+          "distance": 5.3
+        }
+      },
+      "analytics": {
+        "lastUpdated": "2024-04-26T15:30:00Z",
+        "weeklySteps": [8500, 7200, 9100, 6800, 8300, 7900, 9200]
+      },
+      "dynamicGoal": {
+        "goal": 8500,
+        "lastUpdated": "2024-04-26T08:00:00Z"
+      },
+      "gamification": {
+        "dailyStreak": 5,
+        "longestStreak": 12,
+        "lifetimeSteps": 125000,
+        "weeklyRank": "Gold",
+        "weeklySteps": 57100,
+        "badges": [
+          {
+            "id": "1day_active",
+            "name": "1 Day Active",
+            "description": "Complete 1 day of activity",
+            "icon": "🏃",
+            "threshold": 1,
+            "category": "streak",
+            "unlocked": true,
+            "unlockedDate": "2024-04-21T10:00:00Z"
+          },
+          {
+            "id": "3day_streak",
+            "name": "3 Day Streak",
+            "description": "Maintain 3 consecutive days",
+            "icon": "🔥",
+            "threshold": 3,
+            "category": "streak",
+            "unlocked": true,
+            "unlockedDate": "2024-04-23T10:00:00Z"
+          },
+          {
+            "id": "7day_streak",
+            "name": "7 Day Streak",
+            "description": "Maintain 7 consecutive days",
+            "icon": "🔥🔥",
+            "threshold": 7,
+            "category": "streak",
+            "unlocked": false,
+            "unlockedDate": null
+          },
+          {
+            "id": "50k_lifetime",
+            "name": "50k Lifetime Steps",
+            "description": "Reach 50,000 total steps",
+            "icon": "💪",
+            "threshold": 50000,
+            "category": "lifetime",
+            "unlocked": true,
+            "unlockedDate": "2024-03-10T10:00:00Z"
+          }
+        ]
+      }
+    }
+  }
+}

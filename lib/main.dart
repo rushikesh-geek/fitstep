@@ -5,6 +5,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'viewmodels/auth_viewmodel.dart';
 import 'viewmodels/home_viewmodel.dart';
 import 'viewmodels/profile_viewmodel.dart';
+import 'viewmodels/health_hub_viewmodel.dart';
+import 'viewmodels/gamification_viewmodel.dart';
 import 'views/auth/login_screen.dart';
 import 'views/home/home_screen.dart';
 import 'views/home/health_hub_screen.dart';
@@ -19,6 +21,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => AuthViewModel()),
         ChangeNotifierProvider(create: (_) => HomeViewModel()),
         ChangeNotifierProvider(create: (_) => ProfileViewModel()),
+        ChangeNotifierProvider(create: (_) => HealthHubViewModel()),
+        ChangeNotifierProvider(create: (_) => GamificationViewModel()),
       ],
       child: const MyApp(),
     ),

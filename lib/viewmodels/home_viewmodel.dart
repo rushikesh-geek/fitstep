@@ -3,12 +3,22 @@ import 'dart:async';
 import 'dart:developer' as developer;
 import '../services/realtime_db_service.dart';
 import '../services/step_tracking_service.dart';
+import '../services/goal_service.dart';
+import '../services/motivation_service.dart';
+import '../services/gamification_service.dart';
+import '../services/health_hub_service.dart';
 import '../models/user_model.dart';
 import '../models/daily_data_model.dart';
+import '../models/health_hub_item.dart';
+import '../models/gamification_model.dart';
 
 class HomeViewModel extends ChangeNotifier {
   final RealtimeDBService _dbService = RealtimeDBService();
   late StepTrackingService _stepTrackingService;
+  final GoalService _goalService = GoalService();
+  final MotivationService _motivationService = MotivationService();
+  final GamificationService _gamificationService = GamificationService();
+  final HealthHubService _healthHubService = HealthHubService();
 
   // Step tracking subscriptions
   StreamSubscription<int>? _stepsSubscription;
@@ -32,6 +42,13 @@ class HomeViewModel extends ChangeNotifier {
   // 7-day data for weekly graph
   Map<String, DailyDataModel> _last7DaysData = {};
 
+  // Dynamic goals and motivation
+  int _dynamicGoal = 8000;
+  String _motivationalMessage = '';
+  GamificationModel _gamificationData = GamificationModel();
+  WeeklyAnalytics? _weeklyAnalytics;
+  List<HealthHubItem> _prioritizedHealthContent = [];
+
   // Loading states
   bool _isLoading = false;
   String? _errorMessage;
@@ -50,6 +67,11 @@ class HomeViewModel extends ChangeNotifier {
   bool get isLoading => _isLoading;
   String? get errorMessage => _errorMessage;
   Map<String, DailyDataModel> get last7DaysData => _last7DaysData;
+  int get dynamicGoal => _dynamicGoal;
+  String get motivationalMessage => _motivationalMessage;
+  GamificationModel get gamificationData => _gamificationData;
+  WeeklyAnalytics? get weeklyAnalytics => _weeklyAnalytics;
+  List<HealthHubItem> get prioritizedHealthContent => _prioritizedHealthContent;
 
   // Get sorted date keys (oldest to newest)
   List<String> get sortedLast7DaysDates {
@@ -136,6 +158,7 @@ class HomeViewModel extends ChangeNotifier {
     developer.log('[HomeViewModel] Loading today data for UID: $uid');
     _isLoading = true;
     _errorMessage = null;
+    // Single notification after first frame has rendered
     notifyListeners();
 
     try {
@@ -147,7 +170,7 @@ class HomeViewModel extends ChangeNotifier {
       final today = DateTime.now();
       final dateString =
           '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
-      
+
       developer.log('[HomeViewModel] Today date: $dateString');
 
       // Load user data (for calculations)
@@ -160,12 +183,11 @@ class HomeViewModel extends ChangeNotifier {
       if (dailyData != null) {
         // Load ALL data from DB (including steps) to restore previous values immediately
         // Sensor will override steps when it emits, so this is safe
-        _steps = dailyData.steps;  // ✅ RESTORE LAST VALUE from DB
+        _steps = dailyData.steps;
         _water = dailyData.water;
         _sleep = dailyData.sleep;
         developer.log('[INIT] Loaded steps from DB: $_steps');
         developer.log('[HomeViewModel] Loaded from DB - Steps: $_steps, Water: $_water ml, Sleep: $_sleep hours');
-        // Distance and calories will be calculated from sensor steps + user data
       } else {
         // No data for today, initialize metrics to 0
         _steps = 0;
@@ -177,8 +199,9 @@ class HomeViewModel extends ChangeNotifier {
       // Calculate metrics (will use sensor steps + user data)
       _calculateMetrics();
 
-      // Load 7-day data for weekly graph
-      await loadLast7DaysData(uid);
+      // Load 7-day data for weekly graph and related computations
+      // All state updates are batched - only ONE notification at the end
+      await _loadLast7DaysDataBatched(uid);
 
       _errorMessage = null;
     } catch (e) {
@@ -190,15 +213,206 @@ class HomeViewModel extends ChangeNotifier {
     }
   }
 
-  // Load last 7 days data for weekly graph
-  Future<void> loadLast7DaysData(String uid) async {
+  /// Load last 7 days data and batch all state updates
+  /// Only calls notifyListeners() once at the very end to minimize rebuilds
+  Future<void> _loadLast7DaysDataBatched(String uid) async {
     try {
       final data = await _dbService.getLast7DaysData(uid);
       _last7DaysData = data;
+
+      // Update all computed values without notifying (batch updates)
+      await _computeDynamicGoal(uid);
+      _computeWeeklyAnalytics();
+      _updateMotivationMessage();
+      await _updateGamification(uid);
+
+      // Single notification after all state changes
       notifyListeners();
     } catch (e) {
+      developer.log('[HomeViewModel] Error loading last 7 days data: $e', error: e);
       // Silently continue on failure (graph won't display, but app won't crash)
     }
+  }
+
+  /// Legacy method - kept for backward compatibility
+  Future<void> loadLast7DaysData(String uid) async {
+    await _loadLast7DaysDataBatched(uid);
+  }
+
+  // Compute and update dynamic goal
+  Future<void> _computeDynamicGoal(String uid) async {
+    try {
+      // Get last saved goal
+      final savedGoal = _userModel?.stepGoal ?? 8000;
+      
+      // Compute new smart goal
+      final newGoal = _goalService.computeSmartGoal(_last7DaysData, savedGoal);
+      
+      // Save to Firebase
+      await _goalService.saveDynamicGoal(uid, newGoal);
+      
+      _dynamicGoal = newGoal;
+      developer.log('[HomeViewModel] Dynamic goal updated: $_dynamicGoal');
+    } catch (e) {
+      developer.log('[HomeViewModel] Error computing dynamic goal: $e');
+      _dynamicGoal = _userModel?.stepGoal ?? 8000;
+    }
+  }
+
+  // Update motivational message based on current progress
+  void _updateMotivationMessage() {
+    _motivationalMessage = _motivationService.getMotivationalMessage(
+      _steps,
+      _dynamicGoal,
+      _last7DaysData,
+    );
+  }
+
+  // Compute weekly analytics
+  void _computeWeeklyAnalytics() {
+    if (_last7DaysData.isEmpty) {
+      _weeklyAnalytics = null;
+      return;
+    }
+
+    int totalSteps = 0;
+    int goalSuccessDays = 0;
+    String bestDay = '';
+    String lowestDay = '';
+    int maxSteps = 0;
+    int minSteps = 100000;
+
+    for (final entry in _last7DaysData.entries) {
+      final steps = entry.value.steps;
+      totalSteps += steps;
+
+      if (steps >= _dynamicGoal) {
+        goalSuccessDays++;
+      }
+
+      if (steps > maxSteps) {
+        maxSteps = steps;
+        bestDay = _getDayName(entry.key);
+      }
+
+      if (steps < minSteps && steps > 0) {
+        minSteps = steps;
+        lowestDay = _getDayName(entry.key);
+      }
+    }
+
+    final averageSteps = totalSteps ~/ _last7DaysData.length;
+    final goalPercentage = ((goalSuccessDays / 7) * 100).toInt();
+
+    // Calculate improvement (compare to previous week)
+    // For now, we'll use a simple 0 if this is first week
+    int improvementPercent = 0;
+    if (totalSteps > 0 && averageSteps > 0) {
+      // Simple estimation based on goal success
+      improvementPercent = (goalPercentage / 10).toInt().clamp(0, 100);
+    }
+
+    _weeklyAnalytics = WeeklyAnalytics(
+      totalSteps: totalSteps,
+      averageSteps: averageSteps,
+      bestDay: bestDay.isNotEmpty ? bestDay : 'N/A',
+      lowestDay: lowestDay.isNotEmpty ? lowestDay : 'N/A',
+      goalSuccessDays: goalSuccessDays,
+      goalPercentage: goalPercentage,
+      improvementPercent: improvementPercent,
+    );
+  }
+
+  // Get day name from date string
+  String _getDayName(String dateString) {
+    try {
+      final date = DateTime.parse(dateString);
+      final dayNames = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+      return dayNames[date.weekday - 1];
+    } catch (e) {
+      return 'Unknown';
+    }
+  }
+
+  // Update gamification data
+  Future<void> _updateGamification(String uid) async {
+    try {
+      await _gamificationService.updateGamification(
+        uid,
+        _steps,
+        _dynamicGoal,
+        _last7DaysData,
+      );
+
+      _gamificationData = await _gamificationService.getGamificationData(uid);
+      developer.log('[HomeViewModel] Gamification updated: ${_gamificationData.dailyStreak} streak');
+    } catch (e) {
+      developer.log('[HomeViewModel] Error updating gamification: $e');
+    }
+  }
+
+  // Load prioritized health content
+  Future<void> loadPrioritizedHealthContent() async {
+    try {
+      final allContent = await _healthHubService.fetchHealthHubContent();
+      
+      if (allContent.isEmpty) {
+        _prioritizedHealthContent = _getLocalFallbackContent();
+        developer.log('[HomeViewModel] Using local fallback health content');
+      } else {
+        final userBmi = _userModel?.bmi ?? 22.0;
+        _prioritizedHealthContent = _healthHubService.prioritizeContent(
+          allContent,
+          _last7DaysData,
+          userBmi,
+        );
+      }
+      
+      developer.log('[HomeViewModel] Loaded ${_prioritizedHealthContent.length} health items');
+      notifyListeners();
+    } catch (e) {
+      developer.log('[HomeViewModel] Error loading health content: $e');
+      _prioritizedHealthContent = _getLocalFallbackContent();
+    }
+  }
+
+  // Local fallback health content
+  List<HealthHubItem> _getLocalFallbackContent() {
+    return [
+      HealthHubItem(
+        id: 'fitness_1',
+        title: 'How To Build A Daily Walking Habit',
+        category: 'fitness',
+        description:
+            'Walking is one of the simplest forms of exercise. Aim for 10,000 steps daily.',
+        videoUrl: 'https://www.youtube.com/watch?v=-3N2sUkdf-Y',
+        level: 'Beginner',
+        tags: ['walking', 'cardio', 'beginner'],
+        priority: 10,
+      ),
+      HealthHubItem(
+        id: 'hydration_1',
+        title: 'Importance of Hydration',
+        category: 'hydration',
+        description:
+            'Drink at least 8 glasses of water daily. Proper hydration improves performance.',
+        videoUrl: 'https://www.youtube.com/watch?v=-slnr4TGA4Y',
+        level: 'Beginner',
+        tags: ['water', 'hydration', 'health'],
+        priority: 7,
+      ),
+      HealthHubItem(
+        id: 'sleep_1',
+        title: 'Sleep Hygiene Tips',
+        category: 'sleep',
+        description:
+            'Maintain a consistent sleep schedule. Create a dark, cool, quiet bedroom.',
+        videoUrl: 'https://www.youtube.com/watch?v=ACmUi-6xkTM',
+        level: 'Beginner',
+        tags: ['sleep', 'rest', 'health'],
+        priority: 6,
+      ),
+    ];
   }
 
   // Generate today's date string (yyyy-mm-dd format)
